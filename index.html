@@ -216,44 +216,61 @@
     }
 
     function unduhPDF() {
-        const tabelIsi = document.getElementById("tabelIsi");
-        tabelIsi.innerHTML = "";
+        alert("Sedang mengambil data terbaru dari Google Spreadsheet, mohon tunggu...");
 
-        let nomor = 1;
-        for (let i = 0; i < localStorage.length; i++) {
-            const kunci = localStorage.key(i);
-            if (kunci.startsWith("absen_")) {
-                const tgl = kunci.replace("absen_", "");
-                const namaPetugas = localStorage.getItem(kunci);
+        // Link URL Web App Google Apps Script milikmu
+        const urlWebApp = "https://script.google.com/macros/s/AKfycbyfPXF72sehgRyJ2zhEQ3X-XsNXUBOPb06QQJ1vVewWfQiL3lN0m90xKc2vAwV6do6-/exec";
 
-                const baris = `<tr>
-                    <td>${nomor++}</td>
-                    <td>${tgl}</td>
-                    <td>${namaPetugas}</td>
-                </tr>`;
-                tabelIsi.innerHTML += baris;
-            }
-        }
+        fetch(urlWebApp)
+            .then(response => response.json())
+            .then(data => {
+                const tabelIsi = document.getElementById("tabelIsi");
+                tabelIsi.innerHTML = ""; // Bersihkan tabel lama
 
-        if (nomor === 1) {
-            alert("Belum ada data absensi di HP ini untuk dicetak!");
-            return;
-        }
+                if (data.length === 0) {
+                    alert("Belum ada data absensi di Spreadsheet untuk dicetak!");
+                    return;
+                }
 
-        const elemen = document.getElementById("area-rekap");
-        elemen.style.display = "block";
+                // Membaca seluruh data yang ditarik dari spreadsheet jemaah
+                for (let i = 0; i < data.length; i++) {
+                    const namaPetugas = data[i].nama || "-";
+                    
+                    let tgl = data[i].tanggal || data[i].timestamp;
+                    if (tgl && tgl.includes("T")) {
+                        tgl = tgl.split("T")[0]; // Memotong jam jika format tanggal berupa timestamp ISO
+                    } else if (tgl && tgl.length > 15) {
+                        tgl = tgl.substring(0, 10); // Pembatasan teks tanggal standard
+                    }
 
-        const opsi = {
-            margin:       10,
-            filename:     `Rekap_Piket_Az_Zainuri_${namaBulan}_${tahun}.pdf`,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2 },
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
+                    const baris = `<tr>
+                        <td>${i + 1}</td>
+                        <td>${tgl}</td>
+                        <td>${namaPetugas}</td>
+                    </tr>`;
+                    tabelIsi.innerHTML += baris;
+                }
 
-        html2pdf().set(opsi).from(elemen).save().then(() => {
-            elemen.style.display = "none";
-        });
+                // Proses render otomatis ke dokumen PDF
+                const elemen = document.getElementById("area-rekap");
+                elemen.style.display = "block";
+
+                const opsi = {
+                    margin:       10,
+                    filename:     `Rekap_Piket_Az_Zainuri_${namaBulan}_${tahun}.pdf`,
+                    image:        { type: 'jpeg', quality: 0.98 },
+                    html2canvas:  { scale: 2 },
+                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+
+                html2pdf().set(opsi).from(elemen).save().then(() => {
+                    elemen.style.display = "none"; // Sembunyikan kembali setelah file terunduh
+                });
+            })
+            .catch(err => {
+                alert("Gagal mengambil data dari Spreadsheet. Pastikan setelan Akses di Apps Script Anda sudah diatur ke 'Anyone'.");
+                console.error(err);
+            });
     }
 </script>
 
