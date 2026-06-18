@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Jadwal Piket Az-Zainuri</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        :root {
+            --merah: #e74c3c;
+            --hijau: #2ecc71;
+            --biru: #3498db;
+            --gelap: #2c3e50;
+        }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #f5f6fa; 
+            margin: 0; 
+            padding: 20px; 
+        }
+        .kontainer { 
+            max-width: 600px; 
+            margin: auto; 
+            background: white; 
+            padding: 25px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
+        }
+        h1, h2 { 
+            text-align: center; 
+            color: var(--gelap); 
+            margin-bottom: 5px; 
+        }
+        p.sub-judul { 
+            text-align: center; 
+            color: #7f8c8d; 
+            margin-top: 0; 
+            margin-bottom: 25px; 
+        }
+        .status-hari-ini { 
+            padding: 20px; 
+            text-align: center; 
+            color: white; 
+            font-weight: bold; 
+            border-radius: 8px; 
+            font-size: 1.2rem; 
+            margin-bottom: 25px; 
+            transition: 0.3s; 
+        }
+        .belum-piket { background-color: var(--merah); }
+        .sudah-piket { background-color: var(--hijau); }
+
+        .grup-input { margin-bottom: 20px; }
+        label { 
+            display: block; 
+            margin-bottom: 8px; 
+            font-weight: 600; 
+            color: var(--gelap); 
+        }
+        input[type="text"] { 
+            width: 100%; 
+            padding: 12px; 
+            border: 2px solid #bdc3c7; 
+            border-radius: 6px; 
+            box-sizing: border-box; 
+            font-size: 1rem; 
+        }
+        input[type="text"]:focus { 
+            border-color: var(--biru); 
+            outline: none; 
+        }
+        .btn { 
+            width: 100%; 
+            padding: 14px; 
+            border: none; 
+            border-radius: 6px; 
+            font-size: 1rem; 
+            font-weight: bold; 
+            cursor: pointer; 
+            color: white; 
+            margin-bottom: 10px; 
+            transition: 0.2s; 
+        }
+        .btn-absen { background-color: var(--biru); }
+        .btn-absen:hover { background-color: #2980b9; }
+        .btn-pdf { background-color: var(--gelap); }
+        .btn-pdf:hover { background-color: #1a252f; }
+
+        #area-rekap { 
+            display: none; 
+            background: white; 
+            padding: 30px; 
+            border: 2px solid #000; 
+            margin-top: 30px; 
+        }
+        .header-ujian { 
+            text-align: center; 
+            border-bottom: 3px double #000; 
+            padding-bottom: 10px; 
+            margin-bottom: 20px; 
+        }
+        .tabel-rekap { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 15px; 
+        }
+        .tabel-rekap th, .tabel-rekap td { 
+            border: 1px solid #000; 
+            padding: 10px; 
+            text-align: left; 
+        }
+        .tabel-rekap th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+
+<div class="kontainer">
+    <h1>Masjid Az-Zainuri</h1>
+    <p class="sub-judul">Aplikasi Jadwal & Absensi Piket Mandiri</p>
+
+    <div id="statusBox" class="status-hari-ini belum-piket">
+        🔴 HARI INI BELUM ADA PIKET
+    </div>
+
+    <div class="grup-input">
+        <label for="namaPetugas">Nama Lengkap Petugas :</label>
+        <input type="text" id="namaPetugas" placeholder="Ketik nama Anda di sini...">
+    </div>
+
+    <button class="btn btn-absen" onclick="kirimAbsen()">SIMPAN & ABSEN HARI INI</button>
+    <button class="btn btn-pdf" onclick="unduhPDF()">CETAK REKAP BULANAN (PDF)</button>
+</div>
+
+<div id="area-rekap">
+    <div class="header-ujian">
+        <h2>LEMBAR REKAPITULASI ABSENSI PIKET</h2>
+        <h3>MASJID AZ-ZAINURI</h3>
+        <p>Format Dokumen Kontrol Internal - Bulan: <span id="rekapBulan"></span></p>
+    </div>
+    <p>Berikut adalah data partisipasi piket mandiri jemaah yang berhasil tercatat oleh sistem:</p>
+    <table class="tabel-rekap">
+        <thead>
+            <tr>
+                <th style="width: 10%;">No</th>
+                <th style="width: 40%;">Hari, Tanggal</th>
+                <th style="width: 50%;">Nama Petugas Piket</th>
+            </tr>
+        </thead>
+        <tbody id="tabelIsi">
+            </tbody>
+    </table>
+</div>
+
+<script>
+    const infoWaktu = new Date();
+    const daftarHari = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+    const daftarBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+    const namaHari = daftarHari[infoWaktu.getDay()];
+    const tanggal = infoWaktu.getDate();
+    const namaBulan = daftarBulan[infoWaktu.getMonth()];
+    const tahun = infoWaktu.getFullYear();
+
+    const stringTanggalHariIni = `${namaHari}, ${tanggal} ${namaBulan} ${tahun}`;
+
+    document.getElementById('rekapBulan').innerText = `${namaBulan} ${tahun}`;
+
+    const cekAbsenHariIni = localStorage.getItem("absen_" + stringTanggalHariIni);
+    if (cekAbsenHariIni) {
+        setSudahPiket(cekAbsenHariIni);
+    }
+
+    function setSudahPiket(nama) {
+        const box = document.getElementById("statusBox");
+        box.className = "status-hari-ini sudah-piket";
+        box.innerText = `🟢 SUDAH PIKET: ${nama.toUpperCase()} (${stringTanggalHariIni})`;
+    }
+
+    function kirimAbsen() {
+        const nama = document.getElementById("namaPetugas").value.trim();
+        
+        if (nama === "") {
+            alert("Maaf, nama harus diisi terlebih dahulu!");
+            return;
+        }
+
+        setSudahPiket(nama);
+        localStorage.setItem("absen_" + stringTanggalHariIni, nama);
+
+        const urlGoogleForm = "https://docs.google.com/forms/d/e/1FAIpQLSdy90TgNFdbiz_ZHJ-_JA09WEnYhvieGIMZCjJGw0TttpTvZw/formResponse";
+        const dataForm = new FormData();
+        
+        dataForm.append("entry.1465210192", nama); 
+        dataForm.append("entry.1524386693", stringTanggalHariIni); 
+
+        fetch(urlGoogleForm, {
+            method: "POST",
+            mode: "no-cors",
+            body: dataForm
+        }).then(() => {
+            alert(`Alhamdulillah jazakallah khairan ${nama}. Data piket Anda telah diperbarui!`);
+        }).catch(err => {
+            alert(`Alhamdulillah jazakallah khairan ${nama}. Data tersimpan di HP.`);
+        });
+    }
+
+    function unduhPDF() {
+        const tabelIsi = document.getElementById("tabelIsi");
+        tabelIsi.innerHTML = "";
+
+        let nomor = 1;
+        for (let i = 0; i < localStorage.length; i++) {
+            const kunci = localStorage.key(i);
+            if (kunci.startsWith("absen_")) {
+                const tgl = kunci.replace("absen_", "");
+                const namaPetugas = localStorage.getItem(kunci);
+
+                const baris = `<tr>
+                    <td>${nomor++}</td>
+                    <td>${tgl}</td>
+                    <td>${namaPetugas}</td>
+                </tr>`;
+                tabelIsi.innerHTML += baris;
+            }
+        }
+
+        if (nomor === 1) {
+            alert("Belum ada data absensi di HP ini untuk dicetak!");
+            return;
+        }
+
+        const elemen = document.getElementById("area-rekap");
+        elemen.style.display = "block";
+
+        const opsi = {
+            margin:       10,
+            filename:     `Rekap_Piket_Az_Zainuri_${namaBulan}_${tahun}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2 },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opsi).from(elemen).save().then(() => {
+            elemen.style.display = "none";
+        });
+    }
+</script>
+
+</body>
+</html>
