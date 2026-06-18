@@ -192,8 +192,17 @@
         const urlGoogleForm = "https://docs.google.com/forms/d/e/1FAIpQLSdy90TgNFdbiz_ZHJ-_JA09WEnYhvieGIMZCjJGw0TttpTvZw/formResponse";
         const dataForm = new FormData();
         
+        // 1. Kirim data Nama Petugas
         dataForm.append("entry.1465210192", nama); 
-        dataForm.append("entry.1524386693", stringTanggalHariIni); 
+
+        // 2. Kirim data Tanggal (Dipecah khusus format kalender Google Form)
+        const tahunAngka = infoWaktu.getFullYear();
+        const bulanAngka = String(infoWaktu.getMonth() + 1).padStart(2, '0'); 
+        const hariAngka = String(infoWaktu.getDate()).padStart(2, '0');
+
+        dataForm.append("entry.1524386693_year", tahunAngka);
+        dataForm.append("entry.1524386693_month", bulanAngka);
+        dataForm.append("entry.1524386693_day", hariAngka);
 
         fetch(urlGoogleForm, {
             method: "POST",
